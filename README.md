@@ -4,7 +4,9 @@ CTF AWD 实时 3D 攻击大屏
 后端：https://github.com/wuhan005/Asteroid_backend
 
 ## 效果演示
-[![Asteroid.gif](https://p.github.red/Asteroid.gif)](https://p.github.red/Asteroid.gif)
+点击查看动图
+
+[![Asteroid.gif](https://img.cdn.n3ko.co/lsky/2020/05/23/191b504f48e55.png)](https://p.github.red/Asteroid.gif)
 
 
 ## 支持
