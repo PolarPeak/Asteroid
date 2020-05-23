@@ -12,7 +12,7 @@ public class MainController : MonoBehaviour
     private int R = 20;     // 半径
 
     // GameObject
-    private Dictionary<string, GameObject> planetGroup = new Dictionary<string, GameObject>();
+    private Dictionary<int, GameObject> planetGroup = new Dictionary<int, GameObject>();
     private UnityEngine.Object planetObj;
 
     public Camera mainCamera;       // 主摄像机
@@ -29,7 +29,7 @@ public class MainController : MonoBehaviour
     private WebSocket webSocket;
     private int round = 1;
     public int roundTime = 300; //默认 300s 一轮
-    public string url = "ws://localhost:8085/hctf2019";
+    public string url = "";
 
     // Start is called before the first frame update
     void Start()
@@ -57,7 +57,7 @@ public class MainController : MonoBehaviour
     {
         JsonData recieveData = JsonMapper.ToObject(msg);
 
-        switch ((string)recieveData["Type"])
+        switch (recieveData["Type"].ToString())
         {
             case "init":
                 // 初始化队伍星球
@@ -71,8 +71,8 @@ public class MainController : MonoBehaviour
                     Vector3 position = new Vector3(middleX + this.R * Mathf.Sin(i * (singleAngle / 180 * Mathf.PI)), .0f, middleZ + this.R * Mathf.Cos(i * (singleAngle / 180 * Mathf.PI)));
                     GameObject planet = Instantiate(this.planetObj, position, Quaternion.identity) as GameObject;
                     planet.GetComponent<SinglePlanet>().SetPosition(position);
-                    planet.GetComponent<SinglePlanet>().SetTeamName((string)teams[i]["name"]);
-                    planet.GetComponent<SinglePlanet>().SetScoreRank((int)teams[i]["rank"], (int)teams[i]["score"]);     // 设置初始分数、排名
+                    planet.GetComponent<SinglePlanet>().SetTeamName(teams[i].ToString());
+                    planet.GetComponent<SinglePlanet>().SetScoreRank(0, 0);     // 设置初始分数、排名
 
                     // 不显示状态
                     planet.GetComponent<SinglePlanet>().SetAttack(false);
@@ -82,15 +82,15 @@ public class MainController : MonoBehaviour
                     planet.GetComponent<SinglePlanet>().CenterCube = this.centerCube;       // 设置中间点方块
 
                     //使用队伍 ID 作为索引
-                    this.planetGroup[i.ToString()] = planet;
+                    this.planetGroup[i] = planet;
                 }
 
                 break;
 
             case "attack":
                 // 接收到信息，发射炮弹
-                string from = (string)recieveData["Data"]["From"];
-                string to = (string)recieveData["Data"]["To"];
+                int from = int.Parse(recieveData["Data"]["From"].ToString());
+                int to = int.Parse(recieveData["Data"]["To"].ToString());
 
                 // 随机选取一种炮弹效果
                 int flashIndex = UnityEngine.Random.Range(0, this.flash.Length);
@@ -115,37 +115,50 @@ public class MainController : MonoBehaviour
                 }, 0.5f));
                 break;
 
+            case "rank":
+                // 设置队伍排行
+                JsonData teamRanks = recieveData["Data"]["Team"];
+                for (int i = 0; i < teamRanks.Count; i++)
+                {
+
+                    this.planetGroup[int.Parse(teamRanks[i]["Id"].ToString())].GetComponent<SinglePlanet>().SetScoreRank(
+                        int.Parse(teamRanks[i]["Score"].ToString()),
+                        int.Parse(teamRanks[i]["Rank"].ToString())
+                        );
+                }
+                break;
+
             case "status":
                 // 设置队伍状态
-                string teamId = (string)recieveData["Data"]["Id"];
-                string status = (string)recieveData["Data"]["Status"];
+                int teamId = int.Parse(recieveData["Data"]["Id"].ToString());
+                string status = recieveData["Data"]["Status"].ToString();
                 SetStatus(teamId, status);
                 break;
 
             case "round":
                 // 设置回合数
-                this.round = int.Parse((string)recieveData["Data"]["Round"]);
+                this.round = int.Parse(recieveData["Data"]["Round"].ToString());
                 roundText.GetComponent<UnityEngine.UI.Text>().text = "第 " + this.round + " 轮";
                 break;
 
             case "time":
                 // 设置剩余时间
-                int time = int.Parse((string)recieveData["Data"]["Time"]);
+                int time = int.Parse(recieveData["Data"]["Time"].ToString());
                 timeText.GetComponent<TimeController>().SetTime(time);
                 break;
 
             case "clear":
-                teamId = (string)recieveData["Data"]["Id"];
+                teamId = int.Parse(recieveData["Data"]["Id"].ToString());
                 this.planetGroup[teamId].GetComponent<SinglePlanet>().SetDown(false);
                 this.planetGroup[teamId].GetComponent<SinglePlanet>().SetAttack(false);
                 break;
 
             case "clearAll":
                 // 清空所有队伍状态
-                for (int i = 1; i <= 12; i++)
+                for (int i = 0; i < planetGroup.Count; i++)
                 {
-                    this.planetGroup[i.ToString()].GetComponent<SinglePlanet>().SetDown(false);
-                    this.planetGroup[i.ToString()].GetComponent<SinglePlanet>().SetAttack(false);
+                    this.planetGroup[i].GetComponent<SinglePlanet>().SetDown(false);
+                    this.planetGroup[i].GetComponent<SinglePlanet>().SetAttack(false);
                 }
                 break;
 
@@ -167,7 +180,7 @@ public class MainController : MonoBehaviour
     }
 
     // 设置队伍状态
-    void SetStatus(string TeamID, string Status)
+    void SetStatus(int TeamID, string Status)
     {
         // 清空状态
         planetGroup[TeamID].GetComponent<SinglePlanet>().SetAttack(false);
